@@ -1,5 +1,11 @@
 # 全忆 V20
 
+## 下载
+
+- **Windows 完整版（自带 Node，双击即用）**：[quanyi-v20-windows.tar.gz](https://github.com/zhengxiaojian1/quanyi/releases/download/v20/quanyi-v20-windows.tar.gz)
+- 网盘备用：[夸克网盘](https://pan.quark.cn/s/e2de1dd64e8f?pwd=nXXv)（提取码 nXXv）
+- 源码：本仓库
+
 **给 AI 一副身体，和一本账。卡带装过去，会话装此刻，模型负责判断和说话。**
 
 ## 下载
@@ -7,7 +13,6 @@
 - **Windows 完整版（自带 Node，双击即用）**：[quanyi-v20-windows.tar.gz](https://github.com/zhengxiaojian1/quanyi/releases/download/v20/quanyi-v20-windows.tar.gz)
 - 网盘备用：[夸克网盘](https://pan.quark.cn/s/e2de1dd64e8f?pwd=nXXv)（提取码 nXXv）
 - 源码：本仓库
-
 
 一句话：**让 AI 记得你说过的原话，并且能带走。**
 
