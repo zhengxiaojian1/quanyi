@@ -1,0 +1,13 @@
+{
+  "name": "dsh-memory-v20",
+  "version": "0.1.0",
+  "private": true,
+  "description": "全忆 V20 宿主插件：每轮把卡带的 brief 递进上下文（只读）",
+  "type": "module",
+  "main": "./lib/index.js",
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "engines": { "dsh": ">=0.1.7-rc.2" }
+  },
+  "engines": { "node": ">=18" }
+}

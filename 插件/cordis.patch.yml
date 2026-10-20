@@ -1,0 +1,10 @@
+# 全忆 V20：宿主补丁层
+# 必须用 insert 形态 —— 只写 - id: 的补丁只会「覆盖已存在的行」，匹配不到就 warn 跳过。
+- insert:
+    - id: memory-v20
+      name: 'dsh-memory-v20'
+      config:
+        # 下面两个键都可省：不写就按插件自身位置推「家」，卡带默认 <家>/卡带样例/桌宠
+        # 卡带: "/abs/path/to/card"
+        # 家: "/abs/path/to/全忆-V20"
+        预算: 600
