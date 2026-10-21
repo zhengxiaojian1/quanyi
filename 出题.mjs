@@ -3,6 +3,7 @@
 // 用法：node 出题.mjs <卡带> <出到.jsonl> [--几 30]
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { mount } from "./读我.mjs";
 
 const [卡带, 出路, ...余] = process.argv.slice(2);
@@ -10,7 +11,7 @@ if (!卡带 || !出路) { console.error("用法: node 出题.mjs <卡带> <出�
 const 几 = Number(余[余.indexOf("--几") + 1]) || 30;
 
 const 名 = process.env.QUANYI_ADAPTER === "openai" ? "openai.mjs" : "deepseek.mjs";
-const 插头 = await import(path.join(import.meta.dirname, "adapters", 名));
+const 插头 = await import(pathToFileURL(path.join(import.meta.dirname, "adapters", 名)).href);
 if (!插头.有钥匙()) { console.error("没钥匙：设 DEEPSEEK_KEY_FILE 或 DEEPSEEK_API_KEY"); process.exit(2); }
 
 const h = mount(卡带);

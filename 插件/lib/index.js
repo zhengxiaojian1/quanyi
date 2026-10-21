@@ -2,14 +2,20 @@
 // 宿主插件（只读记忆、可写名字）：每轮第一步把卡带的 brief 追加进请求
 import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { 整形 } from "../../整形.mjs";
-import { 读配方, 选配方, 跑配方, 算子表 } from "../../配方.mjs";
-import { 重排 } from "../../重排.mjs";
-import { 开, 大事, 收 } from "../../黑匣子.mjs";
-import { 读态, 记提, 记接, 该排 } from "../../主动.mjs";
 import fsSync from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+// Windows 兼容：动态 import 必须给 file:// URL，不能用裸路径
+const 载 = (路) => import(pathToFileURL(路).href);
+let 整形, 读配方, 选配方, 跑配方, 算子表, 重排, 开, 大事, 收, 读态, 记提, 记接, 该排;
+async function 载库(家) {
+  ({ 整形 } = await 载(path.join(家, "整形.mjs")));
+  ({ 读配方, 选配方, 跑配方, 算子表 } = await 载(path.join(家, "配方.mjs")));
+  ({ 重排 } = await 载(path.join(家, "重排.mjs")));
+  ({ 开, 大事, 收 } = await 载(path.join(家, "黑匣子.mjs")));
+  ({ 读态, 记提, 记接, 该排 } = await 载(path.join(家, "主动.mjs")));
+}
 
 export const name = "memory-v20";
 
@@ -54,17 +60,40 @@ const 取最后一句 = (messages) => {
 export async function apply(ctx, config = {}) {
   const 自身 = path.dirname(fileURLToPath(import.meta.url));      // …/plugin/lib
   const 推家 = path.resolve(自身, "..", "..");                       // …/全忆-V20
-  const 家 = config.家 ?? process.env.QUANYI_HOME ?? (fsSync.existsSync(path.join(推家, "driver.mjs")) ? 推家 : "/root/全忆-V20");
-  const { 造驱动 } = await import(path.join(家, "driver.mjs"));
+  // 找家：配置 → 环境变量 → 从本文件往上找 driver.mjs（最多 5 层）
+function 找家(起) {
+  let d = 起;
+  for (let i = 0; i < 5; i++) {
+    if (fsSync.existsSync(path.join(d, "driver.mjs"))) return d;
+    const 上 = path.dirname(d);
+    if (上 === d) break;
+    d = 上;
+  }
+  return null;
+}
+const 家 = config.家 ?? process.env.QUANYI_HOME ?? 找家(推家) ?? 推家;
+  await 载库(家);
+  const { 造驱动 } = await 载(path.join(家, "driver.mjs"));
 
   // 卡带默认：先看「家」本身、再看「家的上一层」（U 盘布局：卡带/工具/插件）、最后样例
   const 有卡 = (d) => { try { return fsSync.existsSync(path.join(d, "manifest.json")); } catch { return false; } };
   const 默认卡带 = 有卡(家) ? 家 : (有卡(path.resolve(家, "..")) ? path.resolve(家, "..") : path.join(家, "卡带样例", "桌宠"));
   let 卡带 = config.卡带 ?? process.env.QUANYI_CARD ?? 默认卡带;
   if (!fsSync.existsSync(path.join(卡带, "manifest.json"))) {
-    const { 找卡带 } = await import(path.join(家, "找卡.mjs"));
+    const { 找卡带 } = await 载(path.join(家, "找卡.mjs"));
     const 列 = 找卡带({ 根: config.根 });
-    if (列.length === 0) { ctx.logger?.warn?.("[memory-v20] 没找到卡带（可设 QUANYI_CARD）；插件不启用"); return; }
+    if (列.length === 0) {
+      // 自动建一张空卡带 —— 别让用户卡在第一步
+      const 新卡 = path.join(家, "卡带", "我的");
+      try {
+        fsSync.mkdirSync(path.dirname(新卡), { recursive: true });
+        execFileSync(process.execPath, [path.join(家, "新卡带.mjs"), "我的", "--到", path.dirname(新卡), "--空"], { stdio: "ignore" });
+      } catch (e) { ctx.logger?.warn?.("[memory-v20] 自动建卡带失败：" + String(e?.message ?? e)); }
+      if (fsSync.existsSync(path.join(新卡, "manifest.json"))) {
+        卡带 = 新卡;
+        ctx.logger?.info?.("[memory-v20] 没找到卡带，已自动建好一张空的：" + 新卡);
+      } else { ctx.logger?.warn?.("[memory-v20] 没找到卡带（可设 QUANYI_CARD）；插件不启用"); return; }
+    }
     if (列.length > 1) ctx.logger?.warn?.("[memory-v20] 找到 " + 列.length + " 张卡带，先用第一张；要固定请设 QUANYI_CARD：" + 列.join(" | "));
     卡带 = 列[0];
     ctx.logger?.info?.("[memory-v20] 自动找到卡带：" + 卡带);
@@ -112,6 +141,9 @@ export async function apply(ctx, config = {}) {
     } catch (e) { ctx.logger?.warn?.("[memory-v20] 排主动检查失败：" + String(e?.message ?? e)); }
   };
 
+  try {
+    if (!(驱.句柄.manifest.帧数 > 0)) ctx.logger?.info?.("[memory-v20] 卡带还是空的。想补之前的对话，跟我说一句：「把之前的会话导进来」。");
+  } catch {}
   const 建议 = 驱.建议会话();
   ctx.logger?.info?.("[memory-v20] 挂上卡带：" + 卡带 + "；会话：" + 建议.动作 + "（" + 建议.因为 + "）");
 
@@ -355,7 +387,7 @@ export async function apply(ctx, config = {}) {
         try {
           if ((驱.句柄.manifest.帧数 ?? 0) === 0 && agent?.session?.id) {
             // 先试宿主日志：那才是完整历史
-            const { 找日志 } = await import(path.join(家, "从宿主导入.mjs"));
+            const { 找日志 } = await 载(path.join(家, "从宿主导入.mjs"));
             const 路 = 找日志(agent.session.id);
             if (路) {
               ctx.logger?.info?.("[memory-v20] 空卡带：找到宿主会话日志，正在后台整份导入");
@@ -427,9 +459,9 @@ export async function apply(ctx, config = {}) {
       if (b.条数 === 0 && config.改写 !== false) {
         try {
           const 名 = process.env.QUANYI_ADAPTER === "openai" ? "openai.mjs" : "deepseek.mjs";
-          const 插头 = await import(path.join(家, "adapters", 名));
+          const 插头 = await 载(path.join(家, "adapters", 名));
           if (插头.有钥匙()) {
-            const { 改写 } = await import(path.join(家, "改写.mjs"));
+            const { 改写 } = await 载(path.join(家, "改写.mjs"));
             const 日 = 驱.句柄.最近日记?.(1)?.[0];
             const 词 = await 改写({ 查询: 话, 说: 插头.说, 上下文: 日 ? String(日.文).slice(0, 400) : "" });
             if (词.length) {
@@ -455,7 +487,7 @@ export async function apply(ctx, config = {}) {
       try {
         if (/找不到|没印象|不对|再想想|再搜|记不得/.test(话) && b.条数 >= 3 && config.重排 !== false) {
           const 名 = process.env.QUANYI_ADAPTER === "openai" ? "openai.mjs" : "deepseek.mjs";
-          const 插头 = await import(path.join(家, "adapters", 名));
+          const 插头 = await 载(path.join(家, "adapters", 名));
           if (插头.有钥匙()) {
             const 候选 = 驱.调工具("recall", { q: 话, k: 8 });
             const 序 = await 重排({ 问: 话, 候选, 说: 插头.说 });
